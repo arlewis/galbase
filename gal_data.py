@@ -1,31 +1,51 @@
-import astropy.io.fits as pyfits
+import astropy.io.fits
 import os
 import numpy as np
-from pdb import set_trace
 
-def gal_data(names=None, data=None, all=False, data_dir=None, tag=None):
+def gal_data(names=None, data=None, all=False, galdata_dir=None, tag=None):
+    """ 
+    Access the galbase 
+
+    Parameters
+    ----------
+    names : str, list, optional
+        A galaxy name or list of galaxy names in string format
+    data : structured array, optional
+        Structured array, such as read in from a FITS file, containing all of the galaxy data
+    all : bool, optional
+        Return all of the galaxy data (Default: False)
+    galdata_dir : string, optional
+        The path to the directory that contains the database
+    tag : string, optional
+        Select only galaxy data with a specific tag; e.g., 'SINGS'
+
+    Returns
+    -------
+    data: structured array
+        All of the galaxy data contained in the database that meets the desired tags
+    """
 
     if not names and not all and not tag:
-        print('Need a name to find a galaxy. Returning empty structure')
+        print('Need a name to find a galaxy. Returning None.')
         return None
 
-    if not data_dir:
+    # If galdata_dir is not specified, galdata_dir is contained within the working directory
+    if not galdata_dir:
         galbase_dir, this_filename = os.path.split(__file__)
         galdata_dir = os.path.join(galbase_dir, "gal_data")
 
-    # READ IN THE DATA
+    # read in the data if it is not passed in
     if data is None:
         dbfile = os.path.join(galdata_dir, 'gal_base.fits')
-        hdulist = pyfits.open(dbfile)
+        hdulist = astropy.io.fits.open(dbfile)
         data = hdulist[1].data
         hdulist.close()
 
-
-    # ALL DATA ARE DESIRED
+    # all data are desried
     if all:
         return data
 
-    # A SPECIFIC SURVEY IS USED
+    # use only a specific survey
     if tag is not None:
         n_data = len(data)
         keep = np.ones(n_data)
@@ -44,7 +64,7 @@ def gal_data(names=None, data=None, all=False, data_dir=None, tag=None):
 
         return good_data
 
-    # BUILD ALIAS DICTIONARY
+    # build the alias
     aliases = {}
     fname = os.path.join(galdata_dir, "gal_base_alias.txt")
     f = open(fname)
@@ -54,12 +74,12 @@ def gal_data(names=None, data=None, all=False, data_dir=None, tag=None):
         s = [temp for temp in line.strip('\n').split(' ')]
         aliases[s[0].replace(' ', '').upper()] = s[1].replace(' ', '').upper()
 
-    # NAME OR NAMES of GALAXIES
+    # name or names of galaxies -- put single galaxy name into list
     if type(names) == str:
         names = [names]
     keep = np.zeros(len(data), dtype=bool)
 
-    # SEARCH FOR GALAXIES
+    # search for the specified galaxies
     for name in names:
         name_a = aliases[name.replace(' ', '').upper()]
         ind = data.field('NAME') == name_a
